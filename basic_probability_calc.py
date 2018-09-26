@@ -6,12 +6,11 @@ Created on Tue Sep 25 19:46:34 2018
 """
 
 import pandas as pd
+from itertools import product
 
+# Import data 
 filepath = r"C:\Users\Ben\Documents\citibike_predictor\JC-201808-citibike-tripdata.csv"
 df = pd.read_csv(filepath)
-
-df.dtypes
-df
 
 # Convert times from objects to datetimes
 df["startdatetime"] = pd.to_datetime(df["starttime"])
@@ -31,7 +30,20 @@ df_group = (df.groupby([df['end station name'], grouper])
               ['end station name']
               .agg('count'))
 
+df_group = df_group.reset_index(name="bikes parked")
+
 # Period index creation
-dr = pd.date_range("00:00", "23:59", freq="5min").time
-px = pd.PeriodIndex(start="00:00", end="23:59", freq="5min")
-px
+dr = pd.date_range(min_date + " 00:00", min_date + " 23:59", freq="5min")
+dr
+data_placeholder = pd.DataFrame(list(product(df_group["end station name"].unique(), pd.to_datetime(dr))), 
+                                 columns=("station", "time"))
+
+# Join periodindex with dataframe to fill in null times
+station_times = data_placeholder.merge(df_group, how="left", 
+                                        left_on=["station", "time"], 
+                                        right_on=["end station name", 
+                                                      "stoptime"])
+
+station_times = station_times.drop(columns=["end station name", "stoptime"])
+station_times["bikes parked"] = station_times["bikes parked"].fillna(0)
+station_times
